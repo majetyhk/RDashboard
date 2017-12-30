@@ -1,0 +1,470 @@
+---
+title: "Sample Dashboard"
+author: "`r htmltools::tags$a(href = '#section-key-metrics', style = 'color: inherit; text-decoration: inherit;', 'By Hari Krishna Majety')`"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+runtime: shiny
+output: flexdashboard::flex_dashboard
+orientation: columns
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(flexdashboard)
+library(ggplot2)
+library(dplyr)
+library(shiny)
+library(datasets)
+library(metricsgraphics)
+library(canvasXpress)
+library(visNetwork)
+library(d3heatmap)
+#library(igraph)
+#library(geojsonio)
+library(DT)
+```
+
+Key Metrics {data-orientation=rows}
+======================================
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r echo=F,results='asis'}
+
+
+myIris<-iris
+fillCol(height = 200, flex = c(NA, 1),
+  inputPanel(
+  sliderInput("slider1", label = "Max Petal Width", min = min(myIris$Petal.Width), max = max(myIris$Petal.Width),value = mean(myIris$Petal.Width))
+ )
+)
+
+```
+
+Column {data-height=650}
+-----------------------------------------------------------------------
+### Petal Width Distribution 
+
+```{r echo=F,results='asis'}
+#myIris<-myIris%>%group_by(Species)%>%summarise(speciesCount=length(Species))
+myIris2<-myIris%>%group_by(Petal.Width)%>%summarise(count=length(Petal.Width))
+myIris2<-myIris2[order(myIris2$Petal.Width),]
+myIris2$ymax<-cumsum(myIris2$Petal.Width);
+myIris2$ymin<-c(0,head(myIris2$ymax,n=-1));
+
+
+
+
+renderPlot({
+  ggplot(data=myIris2[myIris2$Petal.Width<=input$slider1,],mapping =  aes(fill=Petal.Width, ymin=ymin,ymax=ymax, xmin = 2, xmax=4)) + 
+  geom_rect() +
+  coord_polar(theta="y") +
+  xlim(c(0, 4))
+})
+```
+
+Sample HTML Widgets
+==========================================
+  
+Column{.tabset}
+----------------------------------------------------------------------
+  
+### Scatter Plot
+  
+This scatter plot has been created using the metric graphics library. More examples can be found [here](http://hrbrmstr.github.io/metricsgraphics/)
+
+```{r, echo=FALSE}
+#--------------------------------------------------------------------------------------
+# #Plotting Scatter PLot on IRIS dataset
+# #--------------------------------------------------------------------------------------
+
+iris %>%
+  mjs_plot(x=Sepal.Length, y=Sepal.Width,title = "IRIS DATASET") %>%
+  mjs_point(color_accessor=Petal.Length, size_accessor=Petal.Width) %>%
+  mjs_labs(x="Sepal Length", y="Sepal Width")
+
+```
+
+
+### Boxplot
+
+This bar plot has been created using the canvasXpress library. More examples can be found [here](https://github.com/neuhausi/canvasXpress/)
+
+```{r, echo=FALSE}
+#--------------------------------------------------------------------------------------
+#Plotting Box Plot on IRIS dataset
+#--------------------------------------------------------------------------------------
+box_data <- t(iris[,1:4])
+box_annot <- as.matrix(iris[,5])
+colnames(box_annot) <- "Species"
+canvasXpress(box_data, smpAnnot=box_annot, graphType='Boxplot', afterRender=list(list('groupSamples', list('Species'))))
+
+```
+
+
+### Multi-line Chart
+
+This multi-line chart has been created using the metric graphics library. More examples can be found [here](http://hrbrmstr.github.io/metricsgraphics/)
+
+```{r, echo=FALSE}
+#--------------------------------------------------------------------------------------
+#Plotting Multi Line Chart on Simulated dataset
+#--------------------------------------------------------------------------------------
+
+set.seed(1492)
+stocks_data <- data.frame(
+  time = as.Date('2009-01-01') + 0:9,
+  X = rnorm(10, 0, 1),
+  Y = rnorm(10, 0, 2),
+  Z = rnorm(10, 0, 4))
+
+stocks_data %>%
+  mjs_plot(x=time, y=X, title = "Multi Line Chart on Simulated Data") %>%
+  mjs_line() %>%
+  mjs_add_line(Y) %>%
+  mjs_add_line(Z) %>%
+  mjs_axis_x(xax_format="date") %>%
+  mjs_add_legend(legend=c("X", "Y", "Z"))
+
+```
+
+### Histogram
+
+This histogram has been created using the metric graphics library. More examples can be found [here](http://hrbrmstr.github.io/metricsgraphics/)
+
+```{r, echo=FALSE}
+#--------------------------------------------------------------------------------------
+#Plotting Histogram on Simulated dataset
+#--------------------------------------------------------------------------------------
+mjs_plot(rnorm(10000, mean=0.5, sd=1), width=600, height=600, title = "Histogram on Simulated Data") %>%
+  mjs_histogram(bar_margin=2) %>%
+  mjs_add_line(rnorm(10, 0, 2))
+
+
+```
+
+
+
+
+### 3D Scatter Plot
+
+This 3D scatter plot has been created using the canvasXpress library. More examples can be found [here](https://github.com/neuhausi/canvasXpress/)
+
+```{r, echo=FALSE}
+#--------------------------------------------------------------------------------------
+#Plotting 3D Scatter PLot on IRIS dataset
+#--------------------------------------------------------------------------------------
+
+scatter3d_data <- t(iris[,1:4])
+scatter3d_Annot <- as.matrix(iris[,5])
+colnames(scatter3d_Annot) <- "Species"
+canvasXpress(t(scatter3d_data), varAnnot=scatter3d_Annot, graphType='Scatter3D', colorBy='Species', width = 1000, height = 1000)
+
+```
+
+
+
+
+Layout By Column { data-navmenu="Sample Layouts"}
+========================================================
+Column
+-------------------------------------
+  
+### Horizontal Bar chart
+  
+```{r, echo=FALSE}
+renderPlot({
+  ggplot(mtcars, aes(x=as.factor(cyl), fill=as.factor(cyl) )) +
+    geom_bar() + 
+    coord_flip()+
+    scale_fill_brewer(palette = "Pastel1")
+  
+}) 
+```
+
+Column
+-------------------------------------
+  
+### Stacked Bar Chart
+  
+```{r, echo=FALSE}
+# create a dataset
+specie=c(rep("sorgho" , 3) , rep("poacee" , 3) , rep("banana" , 3) , rep("triticum" , 3) )
+condition=rep(c("normal" , "stress" , "Nitrogen") , 4)
+value=abs(rnorm(12 , 0 , 15))
+stacked_bar_data=data.frame(specie,condition,value)
+
+renderPlot({
+  ggplot(stacked_bar_data, aes(fill=condition, y=value, x=specie)) + 
+    geom_bar( stat="identity")+
+    scale_fill_brewer(palette = "Pastel1")
+})
+
+
+```   
+
+### Grouped Bar Chart
+
+```{r, echo=FALSE}
+
+
+# Grouped
+renderPlot({
+  ggplot(stacked_bar_data, aes(fill=condition, y=value, x=specie)) + 
+    geom_bar(position="dodge", stat="identity")+
+    scale_fill_brewer(palette = "Pastel1")
+})
+```
+
+Layout By Row { data-navmenu="Sample Layouts" data-orientation=rows}
+========================================================
+Row
+-------------------------------------
+  
+### Basic Histogram
+  
+```{r, echo=FALSE}
+sample_hist_data=data.frame(value=rnorm(10000))
+renderPlot({
+  ggplot(sample_hist_data, aes(x=value)) + 
+    geom_histogram(binwidth = 0.2, color="white", fill=rgb(0.2,0.7,0.1,0.4) ) 
+})
+```
+
+Row
+-------------------------------------
+  
+### Histogram With Color Gradient
+  
+```{r, echo=FALSE}
+renderPlot({
+  ggplot(sample_hist_data, aes(x=value)) + 
+    geom_histogram(binwidth = 0.2, aes(fill = ..count..) )+
+    scale_fill_gradient("Count", low = "green", high = "pink")
+})
+```
+
+### Density Plot
+
+```{r, echo=FALSE}
+data(diamonds)
+renderPlot({
+  ggplot(data=diamonds,aes(x=price, group=cut, fill=cut, color="white")) + 
+    geom_density(adjust=1.5 , alpha=0.2)
+})
+```
+
+Tabset Column { data-navmenu="Sample Layouts"}
+========================================================
+  
+Column 
+-------------------------------------
+  
+### Area Chart
+  
+```{r, echo=FALSE}
+area_data=data.frame(my_x=seq(1,10), my_size=sample(seq(1,20),10))
+
+# Basic filled area plot
+renderPlot({ggplot(area_data, aes(x=my_x , y=my_size)) + 
+    geom_area( color = "white", fill="blue", alpha=.2)+ 
+    geom_line()})
+
+```
+
+Column {.tabset}
+-------------------------------------
+  
+### Stacked Area Chart
+  
+```{r, echo=FALSE}
+set.seed(345)
+Sector <- rep(c("S01","S02","S03","S04","S05","S06","S07"),times=7)
+Year <- as.numeric(rep(c("1950","1960","1970","1980","1990","2000","2010"),each=7))
+Value <- runif(49, 10, 100)
+data <- data.frame(Sector,Year,Value)
+
+renderPlot({ggplot(data, aes(x=Year, y=Value, fill=Sector)) +
+    geom_area(colour="white", size=.2, alpha=.4) +
+    scale_fill_brewer(palette="Pastel1", breaks=rev(levels(data$Sector)))})
+
+```   
+
+### Stacked Density Plots
+
+```{r, echo=FALSE}
+renderPlot({ggplot(data=diamonds,aes(x=price, group=cut, fill=cut)) + 
+    geom_density(adjust=1.5, position="fill", color="white")+
+    scale_fill_brewer(palette="Pastel1")
+})
+
+```
+
+Tabset Row { data-navmenu="Sample Layouts" data-orientation=rows}
+========================================================
+
+Row 
+-------------------------------------
+  
+### Violin Plot
+  
+```{r, echo=FALSE}
+renderPlot({
+  ggplot(mtcars, aes(factor(cyl), mpg)) +
+    geom_violin(color = "white", aes(fill = factor(cyl)))+
+    scale_fill_brewer(palette="Pastel1")
+})
+
+
+```
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+  
+### Level Plot
+  
+```{r, echo=FALSE}
+x <- seq(1,10, length.out=20)
+y <- seq(1,10, length.out=20)
+level_data <- expand.grid(X=x, Y=y)
+level_data$Z <- runif(400, 0, 5)
+renderPlot({
+  ggplot(level_data, aes(X, Y, z= Z)) + geom_tile(aes(fill = Z)) + theme_light()
+})
+
+```   
+
+### Trend Line With Confidence Interval
+
+```{r, echo=FALSE}
+line_conf_data=data.frame(cond = rep(c("condition_1", "condition_2"), each=10), my_x = 1:100 + rnorm(100,sd=9), my_y = 1:100 + rnorm(100,sd=16) )
+
+renderPlot({
+  ggplot(line_conf_data, aes(x=my_x, y=my_y)) + geom_point(shape=1) + geom_smooth(method=lm , color="purple", se=TRUE)
+  
+})  
+
+```
+
+Storyboard Layout {.storyboard data-navmenu="Sample Layouts"}
+========================================================= 
+  
+### Simple Network Graph created using the visNetwork library. 
+```{r, echo=FALSE} 
+
+nodes <- data.frame(id = 1:10, label = c(1:10)) 
+edges <- data.frame(from = sample.int(10), to = sample.int(10)) 
+visNetwork(nodes, edges, width = "100%", height = "100%", main = "Network on Random Data")%>% 
+  visOptions(highlightNearest = TRUE) 
+
+``` 
+
+***
+  More examples can be found [here](http://datastorm-open.github.io/visNetwork/ )
+
+
+### Another Chart Over here and so on. 
+```{r, echo=FALSE} 
+
+#renderPlot(
+#  ggplot( something to plot)
+#)
+
+``` 
+
+***
+  More examples can be found [here](https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf)
+
+
+
+Sample Shiny Widgets {data-orientation=rows}
+========================================= 
+  
+Rows 
+---------------------------------------------- 
+  
+### Action Buttons 
+```{r, echo=FALSE} 
+actionButton("action", label = "Action") 
+submitButton("Submit") 
+``` 
+
+### Single Checkbox 
+```{r, echo=FALSE} 
+checkboxInput("checkbox", label = "Choice A", value = TRUE) 
+``` 
+
+### Checkbox Group 
+```{r, echo=FALSE} 
+checkboxGroupInput("checkGroup", 
+                   label = "", 
+                   choices = list("Choice 1" = 1, 
+                                  "Choice 2" = 2, "Choice 3" = 3), 
+                   selected = 1) 
+``` 
+
+### Date Input 
+```{r, echo=FALSE} 
+dateInput("date", label = "", value = "2014-01-01") 
+``` 
+
+Rows 
+-------------------------------------------------- 
+  
+### Date Input 
+```{r, echo=FALSE} 
+dateRangeInput("dates", label = "") 
+``` 
+
+### File Input 
+```{r, echo=FALSE} 
+fileInput("file", label = "") 
+``` 
+
+### Numeric Input 
+```{r, echo=FALSE} 
+numericInput("num", 
+             label = "", 
+             value = 1) 
+``` 
+
+### Help Text 
+```{r, echo=FALSE} 
+helpText("Note: help text isn't a true widget,", 
+         "but it provides an easy way to add text to", 
+         "accompany other widgets.") 
+``` 
+
+Rows 
+-------------------------------------------------- 
+  
+### Date Input 
+```{r, echo=FALSE} 
+radioButtons("radio", label = "", 
+             choices = list("Choice 1" = 1, "Choice 2" = 2, 
+                            "Choice 3" = 3),selected = 1) 
+``` 
+
+### Radio Button 
+```{r, echo=FALSE} 
+selectInput("select", label = "", 
+            choices = list("Choice 1" = 1, "Choice 2" = 2, 
+                           "Choice 3" = 3), selected = 1) 
+
+``` 
+
+### Sliders 
+```{r, echo=FALSE} 
+sliderInput("slider1", label = "", min = 0, max = 100, value = 50) 
+
+sliderInput("slider2", "",min = 0, max = 100, value = c(25, 75)) 
+``` 
+
+### Input Text 
+```{r, echo=FALSE} 
+textInput("text", label ="", 
+          value = "Enter text...") 
+``` 
+
+
+
